@@ -10,7 +10,7 @@ import {
 } from 'react-router-dom';
 
 import Login from './views/Login';
-import Home from './views/Home';
+import Stocks from './views/Stocks';
 import Orders from './views/Orders';
 import { db } from './res/firebase';
 
@@ -50,12 +50,12 @@ function App() {
         >
           <header className="terminal-logo">
             <div className="logo terminal-prompt">wall street mafia</div>
-            <blockquote>
+            {/* <blockquote>
               <small>
                 the markets can remain irrational longer than you can remain
                 solvent
               </small>
-            </blockquote>
+            </blockquote> */}
           </header>
           <nav className="terminal-menu">
             <ul>
@@ -87,7 +87,7 @@ function App() {
               <Login setUser={setUser} user={user} />
             </Route>
             <Route path="/stocks">
-              {user ? <Home /> : <Redirect to="/login" />}
+              {user ? <Stocks /> : <Redirect to="/login" />}
             </Route>
             <Route path="/orders">
               {user ? <Orders /> : <Redirect to="/login" />}
