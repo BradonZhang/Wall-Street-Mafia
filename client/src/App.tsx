@@ -5,7 +5,7 @@ import Login from './Login';
 import Home from './Home';
 import Orders from './Orders';
 import Ticker from 'react-ticker';
-import { BrowserRouter as Router, Switch, Route, Redirect, useHistory } from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Link, Route, Redirect, useHistory } from 'react-router-dom';
 
 interface Price {
   symbol: string,
@@ -32,8 +32,8 @@ function App() {
           </header>
           <nav className="terminal-menu">
             <ul>
-              <li onClick={() => history.push("/stocks")}><a>stocks</a></li>
-              <li onClick={() => history.push("/orders")}><a>orders</a></li>
+              <li><Link to="/stocks"><a>stocks</a></Link></li>
+              <li><Link to="/orders"><a>orders</a></Link></li>
               <li>{(user) ? user : "not logged in"}</li>
             </ul>
           </nav>
@@ -44,10 +44,10 @@ function App() {
             <Login setUser={setUser} user={user} />
           </Route>
           <Route path="/stocks">
-            <Home />
+            {user ? <Home /> : <Redirect to="/login" />}
           </Route>
           <Route path="/orders">
-            <Orders />
+            {user ? <Orders /> : <Redirect to="/login" />}
           </Route>
           <Route path="/:symbol">
 
