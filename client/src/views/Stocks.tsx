@@ -3,11 +3,11 @@
 function Home() {
   let stockSymbols = ['GME', 'AMC', 'MSFT', 'AAPL', 'GOOGL', 'COF', 'AXP', 'HD', 'C', 'ACN'];
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column'}}>
-      <div className="terminal-alert terminal-alert-primary">
+    <div style={{ display: 'flex', justifyContent: 'flex-start', flexDirection: 'row', alignItems: "flex-start", width: '100%'}}>
+      <div className="terminal-alert terminal-alert-primary" style={{flexShrink: 5}}>
         <b>buying power</b>: $1234.56
       </div>
-      <div style={{ flexGrow: 1, marginRight: 50, marginLeft: 50 }}>
+      <div style={{ flexGrow: 3, marginRight: 50, marginLeft: 50 }}>
         <header>
           <h2> available stocks </h2>
         </header>
