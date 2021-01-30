@@ -21,7 +21,7 @@ interface Price {
 
 function App() {
   const [user, setUser] = useState('');
-  const [prices, setPrices] = useState([
+  const [prices, setPrices] = useState<Array<Price>>([
     { symbol: 'AAPL', price: 1234.56 },
     { symbol: 'SNE', price: 123.45 },
     { symbol: 'MSFT', price: 2345.67 },
