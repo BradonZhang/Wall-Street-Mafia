@@ -3,50 +3,36 @@
 function Home() {
   let stockSymbols = ['GME', 'AMC', 'MSFT', 'AAPL', 'GOOGL', 'COF', 'AXP', 'HD', 'C', 'ACN'];
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column'}}>
+      <div className="terminal-alert terminal-alert-primary">
+        <b>buying power</b>: $1234.56
+      </div>
       <div style={{ flexGrow: 1, marginRight: 50, marginLeft: 50 }}>
         <header>
-          <h2> current prices </h2>
+          <h2> available stocks </h2>
         </header>
         <table>
           <thead>
             <tr>
               <th>symbol</th>
-              <th>price</th>
+              <th>last exec. price</th>
+              <th>no. of shares</th>
+              <th>avg. cost</th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 100 }, (_, i) => i + 1).map(() => (
               <tr>
-                <td>AAPL</td>
+                <td><a>AAPL</a></td>
                 <td>$125.64</td>
+                <td>5</td>
+                <td>$25.24</td>
               </tr>
             ))}
-
-            <tr>
-              <td>AAPL</td>
-              <td>$125.64</td>
-            </tr>
-            <tr>
-              <td>AAPL</td>
-              <td>$125.64</td>
-            </tr>
-            <tr>
-              <td>AAPL</td>
-              <td>$125.64</td>
-            </tr>
-            <tr>
-              <td>AAPL</td>
-              <td>$125.64</td>
-            </tr>
-            <tr>
-              <td>AAPL</td>
-              <td>$125.64</td>
-            </tr>
           </tbody>
         </table>
       </div>
-      <div style={{ flexGrow: 3, marginLeft: 50, marginRight: 50 }}>
+      {/* <div style={{ flexGrow: 3, marginLeft: 50, marginRight: 50 }}>
         <div className="terminal-alert terminal-alert-primary">
           <b>buying power</b>: $1234.56
         </div>
@@ -87,7 +73,7 @@ function Home() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

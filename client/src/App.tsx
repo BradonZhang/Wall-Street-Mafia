@@ -2,7 +2,7 @@ import React from 'react';
 import { useState } from 'react';
 // import 'terminal.css';
 import Login from './views/Login';
-import Home from './views/Home';
+import Home from './views/Stocks';
 import Orders from './views/Orders';
 import Ticker from 'react-ticker';
 import {
@@ -44,12 +44,12 @@ function App() {
         >
           <header className="terminal-logo">
             <div className="logo terminal-prompt">wall street mafia</div>
-            <blockquote>
+            {/* <blockquote>
               <small>
                 the markets can remain irrational longer than you can remain
                 solvent
               </small>
-            </blockquote>
+            </blockquote> */}
           </header>
           <nav className="terminal-menu">
             <ul>
