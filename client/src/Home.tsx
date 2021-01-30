@@ -1,7 +1,7 @@
 // import 'terminal.css';
 
 function Home() {
-    let stockSymbols = ['AAPL', 'SNE', 'GME', 'MSFT', 'FB'];
+    let stockSymbols = ['GME', 'AMC', 'MSFT', 'AAPL', 'GOOGL', 'COF', 'AXP', 'HD', 'C', 'ACN'];
     return (
         <div style={{display: 'flex', justifyContent: 'space-between'}}>
             <div style={{flexGrow: 1, marginRight: 50, marginLeft: 50}}>
