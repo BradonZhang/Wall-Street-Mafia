@@ -30,7 +30,7 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
       .where("username", "==", username);
   nameTakenQuery.get().then((querySnapshot: types.QuerySnapshot) =>{
     if(querySnapshot.size > 0){
-      response.send({data: "That username is already taken."});
+      response.status(409).send({data: "That username is already taken."});
     }
   });
 
@@ -41,7 +41,7 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
     documentReference.collection("stocks");
     functions.logger.info(["Added a new player:", username])
   });
-  response.status(200).send({
+  response.status(201).send({
     data: "Successfully added new user."
   });
 }));
