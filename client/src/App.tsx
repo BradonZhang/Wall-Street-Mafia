@@ -1,9 +1,4 @@
-import React from 'react';
-import { useState } from 'react';
-// import 'terminal.css';
-import Login from './views/Login';
-import Home from './views/Home';
-import Orders from './views/Orders';
+import React, { useState, useEffect } from 'react';
 import Ticker from 'react-ticker';
 import {
   BrowserRouter as Router,
@@ -14,19 +9,30 @@ import {
   useHistory,
 } from 'react-router-dom';
 
+import Login from './views/Login';
+import Home from './views/Home';
+import Orders from './views/Orders';
+import { db } from './res/firebase';
+
 interface Price {
   symbol: string;
-  price: number;
+  currentPrice: number;
 }
 
 function App() {
   const [user, setUser] = useState('');
-  const [prices, setPrices] = useState<Array<Price>>([
-    { symbol: 'AAPL', price: 1234.56 },
-    { symbol: 'SNE', price: 123.45 },
-    { symbol: 'MSFT', price: 2345.67 },
-  ]);
-  let history = useHistory();
+  const [prices, setPrices] = useState<Array<Price>>([]);
+  const history = useHistory();
+  
+  useEffect(() => {
+    const unsubscribe = db.collection('stocks').onSnapshot(querySnapshot => {
+      const docs = [] as Array<Price>;
+      querySnapshot.forEach(doc => docs.push(doc.data() as Price))
+      setPrices(docs);
+      console.log(docs);
+    });
+    return unsubscribe;
+  }, []);
   return (
     <Router>
       {user ? null : <Redirect to="/login" />}
@@ -102,13 +108,13 @@ function App() {
             margin: 0,
           }}
         >
-          <Ticker>
-            {() =>
-              prices.map(({ symbol: s, price: p }) => (
-                <h1>
+          <Ticker offset={'run-in'}>
+            {() => prices.length ? 
+              prices.map(({ symbol: s, currentPrice: p }) => (
+                <h1 key={s}>
                   {s} ${p}&nbsp;&middot;&nbsp;
                 </h1>
-              ))
+              )) : <h1>&nbsp;</h1>
             }
           </Ticker>
         </div>
