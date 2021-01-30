@@ -3,9 +3,9 @@ import 'terminal.css';
 function Home() {
     return (
         <div style={{display: 'flex', justifyContent: 'space-between'}}>
-            <div style={{flexGrow: 2}}>
+            <div style={{flexGrow: 1, marginRight: 50, marginLeft: 50}}>
                 <header>
-                    <h2>current prices</h2>
+                    <h2> current prices </h2>
                 </header>
                 <table>
                     <thead>
@@ -16,14 +16,36 @@ function Home() {
                     </thead>
                     <tbody>
                         <tr>
-
+                            <td>AAPL</td>
+                            <td>$125.64</td>
+                        </tr>
+                        <tr>
+                            <td>AAPL</td>
+                            <td>$125.64</td>
+                        </tr>
+                        <tr>
+                            <td>AAPL</td>
+                            <td>$125.64</td>
+                        </tr>
+                        <tr>
+                            <td>AAPL</td>
+                            <td>$125.64</td>
+                        </tr>
+                        <tr>
+                            <td>AAPL</td>
+                            <td>$125.64</td>
+                        </tr>
+                        <tr>
+                            <td>AAPL</td>
+                            <td>$125.64</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <div style={{flexGrow: 1}} />
-            <div style={{flexGrow: 6}}>
-                asdfasdf
+            <div style={{flexGrow: 3, marginLeft: 50, marginRight: 50}}>
+                <div className='terminal-alert'>
+                    buying power: $1234.56
+                </div>
             </div>
         </div>
     )
