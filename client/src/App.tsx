@@ -9,8 +9,8 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   return (
     <div className="terminal">
-      <div className="container">
-        <div className="terminal-nav">
+      <div className="container" style={{padding: 0}}>
+        <div className="terminal-nav" style={{alignItems: 'flex-start'}}>
           <header className="terminal-logo">
             <div className="logo terminal-prompt">
               wall street mafia
@@ -19,10 +19,15 @@ function App() {
                 <small>the markets can remain irrational longer than you can remain solvent</small>
             </blockquote>
           </header>
+          <nav className="terminal-menu">
+            <ul>
+              <li>{(loggedIn && user) ? user : "not logged in"}</li>
+            </ul>
+          </nav>
         </div>
         {loggedIn ? null : <Login user={user} setUser={setUser} logIn={() => setLoggedIn(true)}/>}
-      </div>
       {loggedIn ? <Home /> : null }
+        </div>
     </div>
   );
 }
