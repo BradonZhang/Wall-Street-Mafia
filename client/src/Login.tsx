@@ -1,6 +1,8 @@
-import 'terminal.css';
+// import 'terminal.css';
+import {useHistory} from 'react-router-dom';
 
-function Login(props: { setUser: (arg0: string) => void; user: string; logIn: () => void}) {
+function Login(props: { setUser: (arg0: string) => void; user: string}) {
+  let history = useHistory();
     return (
         <form>
           <fieldset>
@@ -9,7 +11,7 @@ function Login(props: { setUser: (arg0: string) => void; user: string; logIn: ()
               <label htmlFor="username">name</label>
               <input id="username" minLength={1} type="text" onChange={(e) => props.setUser(e.target.value)}></input>
             </div>
-            <button onClick={props.logIn} className={props.user ? "btn btn-primary btn-ghost" : "btn btn-error btn-ghost"}>log in</button>
+            <button onClick={() => props.user ? history.push("/home") : null} className={props.user ? "btn btn-primary btn-ghost" : "btn btn-error btn-ghost"}>log in</button>
           </fieldset>
         </form>
     )

@@ -1,4 +1,4 @@
-import 'terminal.css';
+// import 'terminal.css';
 
 function Home() {
     let stockSymbols = ['AAPL', 'SNE', 'GME', 'MSFT', 'FB'];
