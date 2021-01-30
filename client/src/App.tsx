@@ -3,8 +3,9 @@ import { useState } from 'react';
 // import 'terminal.css';
 import Login from './Login';
 import Home from './Home';
+import Orders from './Orders';
 import Ticker from 'react-ticker';
-import { BrowserRouter as Router, Switch, Route, Redirect } from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Route, Redirect, useHistory } from 'react-router-dom';
 
 interface Price {
   symbol: string,
@@ -15,6 +16,7 @@ function App() {
   const [user, setUser] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const [prices, setPrices] = useState([{'symbol': 'AAPL', 'price': 1234.56}, {symbol: 'SNE', price: 123.45}, {symbol: 'MSFT', price: 2345.67}]);
+  let history = useHistory();
   return (
     <Router>
     {user ? null : <Redirect to="/login" />}
@@ -30,8 +32,8 @@ function App() {
           </header>
           <nav className="terminal-menu">
             <ul>
-              <li><a>orders</a></li>
-              <li><a>stocks</a></li>
+              <li onClick={() => history.push("/stocks")}><a>stocks</a></li>
+              <li onClick={() => history.push("/orders")}><a>orders</a></li>
               <li>{(user) ? user : "not logged in"}</li>
             </ul>
           </nav>
@@ -41,8 +43,11 @@ function App() {
           <Route path="/login">
             <Login setUser={setUser} user={user} />
           </Route>
-          <Route path="/home">
+          <Route path="/stocks">
             <Home />
+          </Route>
+          <Route path="/orders">
+            <Orders />
           </Route>
           <Route path="/:symbol">
 
