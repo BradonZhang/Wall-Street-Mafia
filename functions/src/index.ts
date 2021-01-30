@@ -19,21 +19,6 @@ interface Name{
   username: string;
 }
 
-export const getUser = functions.https.onRequest((request, response) => cors(request, response, () => {
-    response.set('Access-Control-Allow-Origin', '*');
-    functions.logger.info(request.body, {structuredData: true});
-  
-    const { username } = request.body.data as Name;
-  
-    const query = db
-        .collection("users")
-        .where("firstName", "==", username);
-    query.get().then((querySnapshot: types.QuerySnapshot) => {
-      const responseStr = `Found ${querySnapshot.size} people with that first name.`;
-      response.send({data: responseStr});
-    });
-}));
-
 export const addPlayer = functions.https.onRequest((request, response) => cors(request, response, () => {
   response.set('Access-Control-Allow-Origin', '*');
   functions.logger.info(request.body, {structuredData: true});
@@ -62,10 +47,7 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
 }));
 
 const getPlayer = async (username: string) => {
-  const nameTakenQuery = db
-      .collection("players")
-      .where("username", "==", username).limit(1);
-  return (await nameTakenQuery.get()).docs[0];
+  return await db.doc(`players/${username}`).get();
 };
 
 const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReference) => {
@@ -77,6 +59,8 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   // change their shares accordingly
   // edit values of the orders
   // if orders are empty, delete them
+  // update stock price
+  // update average cost for bidder
 
   const asker: types.DocumentData = getPlayer(oldAskData.username);
   const bider: types.DocumentData = getPlayer(oldBidData.username);
@@ -94,6 +78,7 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   const biderHolding = bider.ref.collection("holdings").doc(oldAskData.symbol);
   const biderHoldingData = (await biderHolding.get()).data();
   biderHolding.update("shares", biderHoldingData.shares + sharesExchanged);
+  biderHolding.update("avgCost", (biderHoldingData.avgCost*biderHoldingData.shares + costPer*sharesExchanged)/(biderHoldingData.shares+sharesExchanged));
 
   const askerHolding = asker.ref.collection("holdings").doc(oldAskData.symbol);
   const askerHoldingData = (await askerHolding.get()).data();
@@ -111,6 +96,8 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   if (newBidData.amount === 0) {
     bid.delete();
   }
+
+  db.doc(`stocks/${oldAskData.symbol}`).update("currentPrice", costPer);
 };
 
 const findMatches = async (symbol: string, newOrder: types.DocumentReference, isBid: boolean) =>{
