@@ -4,14 +4,14 @@ import * as admin from "firebase-admin";
 const alpha = require('alphavantage')({ key: 'UV1MSQCUNS0STILQ' });
 const cors = require('cors')({origin: true});
 
-const log = ((something: any) => {functions.logger.info(something, {structuredData: true});});
+const log = ((name: string, something: any) => {functions.logger.info({name: name, object: something}, {structuredData: true});});
 
 admin.initializeApp();
 const db = admin.firestore()
 
 export const helloWorld = functions.https.onRequest((request, response) => cors(request, response, () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
   response.send({ data: "Hello, World!" });
 }));
@@ -22,13 +22,13 @@ interface Name{
 
 export const addPlayer = functions.https.onRequest((request, response) => cors(request, response, async () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
   const { username } = request.body.data as Name;
 
   let querySnapshot = await db.collection("players").where("username", "==", username).get();
 
-  log(`There are ${querySnapshot.size} players named ${username}`);
+  // log(`There are ${querySnapshot.size} players named ${username}`,"");
   if(querySnapshot.size > 0){
     response.status(409).send("Username already taken.");
     return;
@@ -38,7 +38,7 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
   querySnapshot = await db.collection("players").where("username", "==", "").get();
   if (querySnapshot.size > 0){
     querySnapshot.docs[0].ref.update("username", username).then(() => {
-      log(`user ${querySnapshot.docs[0].ref.path} got the username ${username}`);
+      // log(`user ${querySnapshot.docs[0].ref.path} got the username ${username}`, "");
       response.send({data:"Successfully created user", id: querySnapshot.docs[0].id});
     });
   }
@@ -53,6 +53,7 @@ const getPlayerByID = async (playerID: number) => {
 
 const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReference) => {
   const oldAskData = (await ask.get()).data()!;
+  // log("oldAskData", oldAskData);
   const oldBidData = (await bid.get()).data()!;
   const sharesExchanged = Math.min(oldAskData.amount, oldBidData.amount);
 
@@ -63,18 +64,25 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   // update stock price
   // update average cost for bidder
 
-  const asker: types.DocumentData = getPlayerByID(oldAskData.playerID);
-  const bider: types.DocumentData = getPlayerByID(oldBidData.playerID);
+  const asker: types.DocumentData = await getPlayerByID(oldAskData.playerID);
+  const askerData = asker.data()!;
+  const bider: types.DocumentData = await getPlayerByID(oldBidData.playerID);
+  const biderData = bider.data()!;
+
+  // log("asker", askerData);
+  // log("bider", biderData);
 
   const costPer = (oldAskData.price + oldBidData.price)/2;
   const cost = sharesExchanged * costPer;
-
-  if (bider.buyingPower < cost) {
+  // log("cost", cost);
+  if (biderData.buyingPower < cost) {
     return;
   }
 
-  bider.ref.update("buyingPower", bider.buyingPower - cost);
-  asker.ref.update("buyingPower", asker.buyingPower + cost);
+  // log("bidder buying power", biderData);
+
+  bider.ref.update("buyingPower", biderData.buyingPower - cost);
+  asker.ref.update("buyingPower", askerData.buyingPower + cost);
 
   const biderHolding = bider.ref.collection("holdings").doc(oldAskData.symbol);
   const biderHoldingData = (await biderHolding.get()).data();
@@ -86,16 +94,16 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   askerHolding.update("shares", askerHoldingData.shares - sharesExchanged);
 
   ask.update("amount", oldAskData.amount - sharesExchanged);
-  bid.update("amount", oldBidData.amount + sharesExchanged);
+  bid.update("amount", oldBidData.amount - sharesExchanged);
 
   const newAskData = (await ask.get()).data()!;
   const newBidData = (await bid.get()).data()!;
 
   if (newAskData.amount === 0) {
-    ask.delete();
+    await ask.delete();
   }
   if (newBidData.amount === 0) {
-    bid.delete();
+    await bid.delete();
   }
 
   db.doc(`stocks/${oldAskData.symbol}`).update("currentPrice", costPer);
@@ -131,12 +139,12 @@ interface Order{
 
 export const addOrder = functions.https.onRequest((request, response) => cors(request, response, () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
   const { isBid, symbol, price, amount, playerID } = request.body.data as Order;
 
   db.collection(`stocks/${symbol}/${isBid ? "bids" : "asks"}`)
-      .add({price, amount, time: types.Timestamp.now(), playerID})
+      .add({price, amount, time: types.Timestamp.now(), playerID, symbol})
       .then(async (documentReference: types.DocumentReference) => {
         await findMatches(symbol, documentReference, isBid);
         response.status(200).send({
@@ -171,7 +179,7 @@ const setStocks = async () => {
 
 export const resetGame = functions.https.onRequest((request, response) => cors(request, response, async () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
   let deletePromises: Array<Promise<any>> = [];
 
@@ -191,12 +199,14 @@ export const resetGame = functions.https.onRequest((request, response) => cors(r
     await setStocks();
 
     for(let i = 0; i < 10; i++){
-      db.doc(`players/${i}`).set({
+      const newPlayer = db.doc(`players/${i}`);
+      newPlayer.set({
         buyingPower: 1000000,
         totalEquity: 1000000,
         username: "",
         id: i
       });
+      newPlayer.collection("holdings");
     }
 
     response.status(200).send({
