@@ -19,35 +19,35 @@ interface Name{
   username: string;
 }
 
-export const addPlayer = functions.https.onRequest((request, response) => cors(request, response, () => {
+export const addPlayer = functions.https.onRequest((request, response) => cors(request, response, async () => {
   response.set('Access-Control-Allow-Origin', '*');
   functions.logger.info(request.body, {structuredData: true});
 
   const { username } = request.body.data as Name;
 
-  const nameTakenQuery = db //check if the requested name is already taken
-      .collection("players")
-      .where("username", "==", username);
-  nameTakenQuery.get().then((querySnapshot: types.QuerySnapshot) =>{
-    if(querySnapshot.size > 0){
-      response.status(409).send({data: "That username is already taken."});
-    }
-  });
+  let querySnapshot = await db.collection("players").where("username", "==", username).get();
 
-  db //add new user
-  .collection("players")
-  .add({buyingPower: 1000000, totalValue: 1000000, username: username})
-  .then((documentReference: types.DocumentReference) => {
-    documentReference.collection("stocks");
-    functions.logger.info(["Added a new player:", username])
-  });
-  response.status(201).send({
-    data: "Successfully added new user."
-  });
+  log(`There are ${querySnapshot.size} players named ${username}`);
+  if(querySnapshot.size > 0){
+    response.status(409).send("Username already taken.");
+    return;
+  }
+
+
+  querySnapshot = await db.collection("players").where("username", "==", "").get();
+  if (querySnapshot.size > 0){
+    querySnapshot.docs[0].ref.update("username", username).then(() => {
+      log(`user ${querySnapshot.docs[0].ref.path} got the username ${username}`);
+      response.send({data:"Successfully created user", id: querySnapshot.docs[0].id});
+    });
+  }
+  else{
+    response.status(409).send("No users available.");
+  }
 }));
 
 const getPlayer = async (username: string) => {
-  return await db.doc(`players/${username}`).get();
+  return (await db.collection("players").where("username", "==", username).get());
 };
 
 const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReference) => {
@@ -101,7 +101,6 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
 };
 
 const findMatches = async (symbol: string, newOrder: types.DocumentReference, isBid: boolean) =>{
-  log("hi");
   const orderData = (await newOrder.get()).data()!;
   const otherOrders = db.collection(`stocks/${symbol}/${isBid ? "asks" : "bids"}`)
   
@@ -126,7 +125,6 @@ interface Order{
   symbol: string;
   price: number;
   amount: number;
-  time: Date;
   username: string;
 }
 
@@ -138,11 +136,59 @@ export const addOrder = functions.https.onRequest((request, response) => cors(re
 
   db.collection(`stocks/${symbol}/${isBid ? "bids" : "asks"}`)
       .add({price, amount, time: types.Timestamp.now(), username})
-      .then((documentReference: types.DocumentReference) => {
-        findMatches(symbol, documentReference, isBid);
+      .then(async (documentReference: types.DocumentReference) => {
+        await findMatches(symbol, documentReference, isBid);
+        response.status(200).send({
+          data: "Successfully added new order."
+        });
       });
+}));
+
+const stockData = [
+  {
+      "currentPrice": 13.55,
+      "symbol": "AMC"
+  },
+  {
+      "currentPrice": 312.01,
+      "symbol": "GME"
+  },
+  {
+      "currentPrice": 123.45,
+      "symbol": "MSFT"
+  }
+];
+
+export const resetGame = functions.https.onRequest((request, response) => cors(request, response, () => {
+  let deletePromises: Array<Promise<any>> = [];
+  db.collection("players").get().then((querySnapshot) => {
+    for (const doc of querySnapshot.docs){
+      deletePromises.push(doc.ref.delete());
+    }
+  });
   
-  response.status(200).send({
-    data: "Successfully added new order."
+  db.collection("stocks").get().then((querySnapshot) => {
+    for (const doc of querySnapshot.docs){
+      deletePromises.push(doc.ref.delete());
+    }
+  });
+
+  Promise.all(deletePromises).then(() => {
+    stockData.forEach((stock: any) => {
+      db.doc(`stocks/${stock.symbol}`).set(stock);
+    });
+
+    for(let i = 0; i < 10; i++){
+      db.doc(`players/${i}`).set({
+        buyingPower: 1000000,
+        totalEquity: 1000000,
+        username: "",
+        id: i
+      });
+    }
+
+    response.status(200).send({
+      data: "Successfully reset game."
+    });
   });
 }));

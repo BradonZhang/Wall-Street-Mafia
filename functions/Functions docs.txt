@@ -5,8 +5,9 @@ Just says hello world.
 
 addPlayer
 expects: { username: string }
-returns: status 409 if username is already taken
+returns: { data: message, id: the id your player was assigned}
 	 status 201 if sucessful
+	 status 409 if username is already taken or there are no players left
 Adds a new player to the Firestore. If the username passed is taken, the player will not be created and a status of 409 will be returned. Otherwise, the player is created and a status of 201 is returned.
 
 addOrder
