@@ -159,20 +159,17 @@ const stockData = [
   }
 ];
 
-export const resetGame = functions.https.onRequest((request, response) => cors(request, response, () => {
+export const resetGame = functions.https.onRequest((request, response) => cors(request, response, async () => {
   let deletePromises: Array<Promise<any>> = [];
-  db.collection("players").get().then((querySnapshot) => {
-    for (const doc of querySnapshot.docs){
-      deletePromises.push(doc.ref.delete());
-    }
-  });
-  
-  db.collection("stocks").get().then((querySnapshot) => {
-    for (const doc of querySnapshot.docs){
-      deletePromises.push(doc.ref.delete());
-    }
-  });
 
+  for (const doc of (await db.collection("players").get()).docs){
+    deletePromises.push(doc.ref.delete());
+  }
+  
+  for (const doc of (await db.collection("stocks").get()).docs){
+    deletePromises.push(doc.ref.delete());
+  }
+  
   Promise.all(deletePromises).then(() => {
     stockData.forEach((stock: any) => {
       db.doc(`stocks/${stock.symbol}`).set(stock);
