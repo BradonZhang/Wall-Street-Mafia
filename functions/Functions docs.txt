@@ -11,6 +11,6 @@ returns: { data: message, id: the id your player was assigned}
 Adds a new player to the Firestore. If the username passed is taken, the player will not be created and a status of 409 will be returned. Otherwise, the player is created and a status of 201 is returned.
 
 addOrder
-expects: {isBid: boolean, symbol: string, price: number, amount: number, username: string}
+expects: {isBid: boolean, symbol: string, price: number, amount: number, playerID: number}
 returns: status 200 if sucessful
 Creates a new order in Firestore. Firestore will look for matches to the new order and, if possible, cause the a transaction to occur.
