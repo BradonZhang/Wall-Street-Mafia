@@ -137,11 +137,31 @@ interface Order{
   playerID: number;
 }
 
-export const addOrder = functions.https.onRequest((request, response) => cors(request, response, () => {
+export const addOrder = functions.https.onRequest((request, response) => cors(request, response, async () => {
   response.set('Access-Control-Allow-Origin', '*');
   log("body", request.body);
 
   const { isBid, symbol, price, amount, playerID } = request.body.data as Order;
+
+  // Order validation
+  let valid = true;
+  if(price < 0 || amount < 0){
+    valid = false;
+  }
+  if((await db.collection("stocks").where("symbol", "==", symbol).get()).size === 0){
+    valid = false;
+  }
+  else{
+    if(!isBid){
+      if(amount > (await db.doc(`players/${playerID}/holdings/${symbol}`).get()).data()!["shares"]){
+        valid = false;
+      }
+    }
+  }
+
+  if (!valid){
+    response.status(400).send({data: "Invalid order request."})
+  }
 
   db.collection(`stocks/${symbol}/${isBid ? "bids" : "asks"}`)
       .add({price, amount, time: types.Timestamp.now(), playerID, symbol})
