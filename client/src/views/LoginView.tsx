@@ -1,17 +1,17 @@
-import { FunctionComponent } from 'react';
+import { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 
 import { functions } from '../res/firebase';
 
 interface LoginViewProps {
-  setUsername: (username: string) => any;
-  username: string;
+  onLogin: (username: string) => any;
 }
 
 const LoginView: FunctionComponent<LoginViewProps> = (props) => {
-  const { username, setUsername } = props;
+  const { onLogin } = props;
+  const [username, setUsername] = useState('');
 
-  let history = useHistory();
+  const history = useHistory();
 
   const handleLogin = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.preventDefault();
@@ -25,6 +25,7 @@ const LoginView: FunctionComponent<LoginViewProps> = (props) => {
         //   console.log(res.data);
         // }
       }
+      onLogin(username);
       history.push('/stocks');
     }
     loginAsync();

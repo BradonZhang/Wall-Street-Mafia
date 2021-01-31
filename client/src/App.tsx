@@ -6,28 +6,59 @@ import {
   Link,
   Route,
   Redirect,
-  // useHistory,
 } from 'react-router-dom';
 
 import LoginView from './views/LoginView';
 import StocksView from './views/StocksView';
 import OrdersView from './views/OrdersView';
 import { db } from './res/firebase';
-import { Stock } from './res/interfaces';
+import { Stock, Holding, Player, HoldingMap } from './res/interfaces';
 
 function App() {
   const [username, setUsername] = useState('');
-  const [prices, setPrices] = useState<Array<Stock>>([]);
-  // const history = useHistory();
   
+  const [prices, setPrices] = useState<Array<Stock>>([]);
+  const [holdings, setHoldings] = useState<HoldingMap>({});
+  const [player, setPlayer] = useState<Player | null>(null);
+
   useEffect(() => {
-    const unsubscribe = db.collection('stocks').onSnapshot(querySnapshot => {
+    return db.collection('stocks').onSnapshot(querySnapshot => {
       const docs = [] as Array<Stock>;
       querySnapshot.forEach(doc => docs.push(doc.data() as Stock))
       setPrices(docs);
+      console.log(docs);
     });
-    return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!username) {
+      setPlayer(null);
+      return;
+    };
+    return db.collection('players').where('username', '==', username).onSnapshot(query => {
+      const doc = query.docs[0];
+      if (!doc) return;
+      setPlayer(doc.data() as Player || null);
+    });
+  }, [username]);
+
+  useEffect(() => {
+    return db.collection('players').doc(String(player?.id)).collection('holdings').onSnapshot(querySnapshot => {
+      const holdings = {} as HoldingMap;
+      querySnapshot.forEach(doc => {
+        const holding = doc.data() as Holding;
+        holdings[holding.symbol] = holding;
+      });
+      setHoldings(holdings);
+      console.log(holdings);
+    });
+  }, [player]);
+
+  const handleLogin = (username: string) => {
+    setUsername(username);
+  };
+
+  const viewProps = { prices, holdings, player };
 
   return (
     <Router>
@@ -80,15 +111,17 @@ function App() {
         >
           <Switch>
             <Route path="/login">
-              <LoginView setUsername={setUsername} username={username} />
+              <LoginView onLogin={handleLogin} />
             </Route>
             <Route path="/stocks">
-              {username ? <StocksView username={username} /> : <Redirect to="/login" />}
+              {username ? <StocksView {...viewProps} /> : <Redirect to={'/login'} />}
+            </Route>
+            <Route path="/orders/:symbol">
+              {username ? <OrdersView {...viewProps} /> : <Redirect to={'/login'} />}
             </Route>
             <Route path="/orders">
-              {username ? <OrdersView username={username} /> : <Redirect to="/login" />}
+              {username ? <OrdersView {...viewProps} /> : <Redirect to={'/login'} />}
             </Route>
-            <Route path="/:symbol"></Route>
             <Route path="/">
               <Redirect to="/login" />
             </Route>
@@ -112,7 +145,7 @@ function App() {
             {() => prices.length ? 
               prices.map(({ symbol: s, currentPrice: p }) => (
                 <h1 key={s} style={{ color: '#7ee460' }} >
-                  {s} ${p}&nbsp;&middot;&nbsp;
+                  {s} ${p.toFixed(2)}&nbsp;&middot;&nbsp;
                 </h1>
               )) : <h1>&nbsp;</h1>
             }
