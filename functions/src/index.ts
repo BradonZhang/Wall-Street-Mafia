@@ -16,58 +16,108 @@ export const helloWorld = functions.https.onRequest((request, response) => cors(
 }));
 
 interface Name{
-  firstName: string;
+  username: string;
 }
-
-export const getUser = functions.https.onRequest((request, response) => cors(request, response, () => {
-    response.set('Access-Control-Allow-Origin', '*');
-    functions.logger.info(request.body, {structuredData: true});
-  
-    const { firstName } = request.body.data as Name;
-  
-    const query = db
-        .collection("users")
-        .where("firstName", "==", firstName);
-    query.get().then((querySnapshot: types.QuerySnapshot) => {
-      const responseStr = `Found ${querySnapshot.size} people with that first name.`;
-      response.send({data: responseStr});
-    });
-}));
 
 export const addPlayer = functions.https.onRequest((request, response) => cors(request, response, () => {
   response.set('Access-Control-Allow-Origin', '*');
   functions.logger.info(request.body, {structuredData: true});
 
-  const { firstName } = request.body.data as Name;
+  const { username } = request.body.data as Name;
 
   const nameTakenQuery = db //check if the requested name is already taken
       .collection("players")
-      .where("username", "==", firstName);
+      .where("username", "==", username);
   nameTakenQuery.get().then((querySnapshot: types.QuerySnapshot) =>{
     if(querySnapshot.size > 0){
-      response.send({data: "That username is already taken."});
+      response.status(409).send({data: "That username is already taken."});
     }
   });
 
   db //add new user
   .collection("players")
-  .add({buyingPower: 1000000, totalValue: 1000000, username: firstName})
+  .add({buyingPower: 1000000, totalValue: 1000000, username: username})
   .then((documentReference: types.DocumentReference) => {
     documentReference.collection("stocks");
-    functions.logger.info(["Added a new player:", firstName])
+    functions.logger.info(["Added a new player:", username])
   });
-  response.status(200).send({
+  response.status(201).send({
     data: "Successfully added new user."
   });
 }));
 
+const getPlayer = async (username: string) => {
+  return await db.doc(`players/${username}`).get();
+};
+
+const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReference) => {
+  const oldAskData = (await ask.get()).data()!;
+  const oldBidData = (await bid.get()).data()!;
+  const sharesExchanged = Math.min(oldAskData.amount, oldBidData.amount);
+
+  // get players that made the orders
+  // change their shares accordingly
+  // edit values of the orders
+  // if orders are empty, delete them
+  // update stock price
+  // update average cost for bidder
+
+  const asker: types.DocumentData = getPlayer(oldAskData.username);
+  const bider: types.DocumentData = getPlayer(oldBidData.username);
+
+  const costPer = (oldAskData.price + oldBidData.price)/2;
+  const cost = sharesExchanged * costPer;
+
+  if (bider.buyingPower < cost) {
+    return;
+  }
+
+  bider.ref.update("buyingPower", bider.buyingPower - cost);
+  asker.ref.update("buyingPower", asker.buyingPower + cost);
+
+  const biderHolding = bider.ref.collection("holdings").doc(oldAskData.symbol);
+  const biderHoldingData = (await biderHolding.get()).data();
+  biderHolding.update("shares", biderHoldingData.shares + sharesExchanged);
+  biderHolding.update("avgCost", (biderHoldingData.avgCost*biderHoldingData.shares + costPer*sharesExchanged)/(biderHoldingData.shares+sharesExchanged));
+
+  const askerHolding = asker.ref.collection("holdings").doc(oldAskData.symbol);
+  const askerHoldingData = (await askerHolding.get()).data();
+  askerHolding.update("shares", askerHoldingData.shares - sharesExchanged);
+
+  ask.update("amount", oldAskData.amount - sharesExchanged);
+  bid.update("amount", oldBidData.amount + sharesExchanged);
+
+  const newAskData = (await ask.get()).data()!;
+  const newBidData = (await bid.get()).data()!;
+
+  if (newAskData.amount === 0) {
+    ask.delete();
+  }
+  if (newBidData.amount === 0) {
+    bid.delete();
+  }
+
+  db.doc(`stocks/${oldAskData.symbol}`).update("currentPrice", costPer);
+};
+
 const findMatches = async (symbol: string, newOrder: types.DocumentReference, isBid: boolean) =>{
+  log("hi");
   const orderData = (await newOrder.get()).data()!;
   const otherOrders = db.collection(`stocks/${symbol}/${isBid ? "asks" : "bids"}`)
   
-  otherOrders.orderBy("time").where("price", isBid ? "<=" : ">=", orderData.price).get().then((querySnapshot: types.QuerySnapshot) => {
-    const match = querySnapshot.docs[0];
-    //makeTrade(newOrder, match);
+  otherOrders.orderBy("time").get().then((querySnapshot: types.QuerySnapshot) => {
+
+    let sharesDealt = 0;
+    querySnapshot.docs.filter((doc) => {
+      if(isBid){ return doc.data().price <= orderData.price; }
+      else{ return doc.data().price >= orderData.price; }
+    }).forEach((match) => {
+      if (sharesDealt > orderData.amount) {return;}
+      sharesDealt += match.data().amount;
+      const ask = isBid ? match.ref : newOrder;
+      const bid = isBid ? newOrder : match.ref;
+      makeDeal(ask, bid);
+    })
   });
 };
 
