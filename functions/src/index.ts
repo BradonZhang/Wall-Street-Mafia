@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions";
 import * as types from "@google-cloud/firestore";
 import * as admin from "firebase-admin";
+const alpha = require('alphavantage')({ key: 'UV1MSQCUNS0STILQ' });
 const cors = require('cors')({origin: true});
 
 const log = ((something: any) => {functions.logger.info(something, {structuredData: true});});
@@ -46,8 +47,8 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
   }
 }));
 
-const getPlayer = async (username: string) => {
-  return (await db.collection("players").where("username", "==", username).get());
+const getPlayerByID = async (playerID: number) => {
+  return (await db.collection("players").where("id", "==", playerID).limit(1).get()).docs[0];
 };
 
 const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReference) => {
@@ -62,8 +63,8 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   // update stock price
   // update average cost for bidder
 
-  const asker: types.DocumentData = getPlayer(oldAskData.username);
-  const bider: types.DocumentData = getPlayer(oldBidData.username);
+  const asker: types.DocumentData = getPlayerByID(oldAskData.playerID);
+  const bider: types.DocumentData = getPlayerByID(oldBidData.playerID);
 
   const costPer = (oldAskData.price + oldBidData.price)/2;
   const cost = sharesExchanged * costPer;
@@ -110,12 +111,12 @@ const findMatches = async (symbol: string, newOrder: types.DocumentReference, is
     querySnapshot.docs.filter((doc) => {
       if(isBid){ return doc.data().price <= orderData.price; }
       else{ return doc.data().price >= orderData.price; }
-    }).forEach((match) => {
+    }).forEach(async (match) => {
       if (sharesDealt > orderData.amount) {return;}
       sharesDealt += match.data().amount;
       const ask = isBid ? match.ref : newOrder;
       const bid = isBid ? newOrder : match.ref;
-      makeDeal(ask, bid);
+      await makeDeal(ask, bid);
     })
   });
 };
@@ -125,17 +126,17 @@ interface Order{
   symbol: string;
   price: number;
   amount: number;
-  username: string;
+  playerID: number;
 }
 
 export const addOrder = functions.https.onRequest((request, response) => cors(request, response, () => {
   response.set('Access-Control-Allow-Origin', '*');
   functions.logger.info(request.body, {structuredData: true});
 
-  const { isBid, symbol, price, amount, username } = request.body.data as Order;
+  const { isBid, symbol, price, amount, playerID } = request.body.data as Order;
 
   db.collection(`stocks/${symbol}/${isBid ? "bids" : "asks"}`)
-      .add({price, amount, time: types.Timestamp.now(), username})
+      .add({price, amount, time: types.Timestamp.now(), playerID})
       .then(async (documentReference: types.DocumentReference) => {
         await findMatches(symbol, documentReference, isBid);
         response.status(200).send({
@@ -159,7 +160,19 @@ const stockData = [
   }
 ];
 
+const setStocks = async () => {
+  // const stocks = [ //list of all the stocks we're using
+  //   "AMC", "GME", "MSFT"
+  // ];
+
+  const stonkData = await alpha.data.intraday("AMC");
+  stonkData["Time Series (1min)"][stonkData["Meta Data"]["3. Last Refreshed"]]["4. close"];
+};
+
 export const resetGame = functions.https.onRequest((request, response) => cors(request, response, async () => {
+  response.set('Access-Control-Allow-Origin', '*');
+  functions.logger.info(request.body, {structuredData: true});
+
   let deletePromises: Array<Promise<any>> = [];
 
   for (const doc of (await db.collection("players").get()).docs){
@@ -169,11 +182,13 @@ export const resetGame = functions.https.onRequest((request, response) => cors(r
   for (const doc of (await db.collection("stocks").get()).docs){
     deletePromises.push(doc.ref.delete());
   }
-  
-  Promise.all(deletePromises).then(() => {
+
+  Promise.all(deletePromises).then(async () => {
     stockData.forEach((stock: any) => {
       db.doc(`stocks/${stock.symbol}`).set(stock);
     });
+
+    await setStocks();
 
     for(let i = 0; i < 10; i++){
       db.doc(`players/${i}`).set({
