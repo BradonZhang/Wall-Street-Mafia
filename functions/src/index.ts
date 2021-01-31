@@ -153,14 +153,21 @@ export const addOrder = functions.https.onRequest((request, response) => cors(re
   }
   else{
     if(!isBid){
-      if(amount > (await db.doc(`players/${playerID}/holdings/${symbol}`).get()).data()!["shares"]){
+      const holdingData = (await db.doc(`players/${playerID}/holdings/${symbol}`).get()).data();
+      if(holdingData != undefined){
+        if(amount > holdingData["shares"]){
+          valid = false;
+        }
+      }
+      else{
         valid = false;
       }
     }
   }
 
   if (!valid){
-    response.status(400).send({data: "Invalid order request."})
+    response.status(400).send({data: "Invalid order request."});
+    return;
   }
 
   db.collection(`stocks/${symbol}/${isBid ? "bids" : "asks"}`)
