@@ -1,8 +1,14 @@
+import { FunctionComponent } from 'react';
 import { useHistory } from 'react-router-dom';
 
 import { functions } from '../res/firebase';
 
-function Login(props: { setUsername: (username: string) => void; username: string }) {
+interface LoginViewProps {
+  setUsername: (username: string) => any;
+  username: string;
+}
+
+const LoginView: FunctionComponent<LoginViewProps> = (props) => {
   const { username, setUsername } = props;
 
   let history = useHistory();
@@ -48,6 +54,6 @@ function Login(props: { setUsername: (username: string) => void; username: strin
       </fieldset>
     </form>
   );
-}
+};
 
-export default Login;
+export default LoginView;

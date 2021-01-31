@@ -9,9 +9,9 @@ import {
   // useHistory,
 } from 'react-router-dom';
 
-import Login from './views/Login';
-import Stocks from './views/Stocks';
-import Orders from './views/Orders';
+import LoginView from './views/LoginView';
+import StocksView from './views/StocksView';
+import OrdersView from './views/OrdersView';
 import { db } from './res/firebase';
 import { Stock } from './res/interfaces';
 
@@ -80,13 +80,13 @@ function App() {
         >
           <Switch>
             <Route path="/login">
-              <Login setUsername={setUsername} username={username} />
+              <LoginView setUsername={setUsername} username={username} />
             </Route>
             <Route path="/stocks">
-              {username ? <Stocks username={username} /> : <Redirect to="/login" />}
+              {username ? <StocksView username={username} /> : <Redirect to="/login" />}
             </Route>
             <Route path="/orders">
-              {username ? <Orders username={username} /> : <Redirect to="/login" />}
+              {username ? <OrdersView username={username} /> : <Redirect to="/login" />}
             </Route>
             <Route path="/:symbol"></Route>
             <Route path="/">
