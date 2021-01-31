@@ -153,28 +153,19 @@ export const addOrder = functions.https.onRequest((request, response) => cors(re
       });
 }));
 
-const stockData = [
-  {
-      "currentPrice": 13.55,
-      "symbol": "AMC"
-  },
-  {
-      "currentPrice": 312.01,
-      "symbol": "GME"
-  },
-  {
-      "currentPrice": 123.45,
-      "symbol": "MSFT"
-  }
-];
 
 const setStocks = async () => {
-  // const stocks = [ //list of all the stocks we're using
-  //   "AMC", "GME", "MSFT"
-  // ];
-
-  const stonkData = await alpha.data.intraday("AMC");
-  stonkData["Time Series (1min)"][stonkData["Meta Data"]["3. Last Refreshed"]]["4. close"];
+  const stocks = [ //list of all the stocks we're using
+    "AXP", "COF", "C", "GOOG", "ACN"
+  ];
+  for(let symbol of stocks){
+    const stockData = await alpha.data.intraday(symbol);
+    const initialPrice = stockData["Time Series (1min)"][stockData["Meta Data"]["3. Last Refreshed"]]["4. close"];
+    db.doc(`stocks/${symbol}`).set({
+      currentPrice: Number(initialPrice),
+      symbol: symbol
+    });
+  }
 };
 
 export const resetGame = functions.https.onRequest((request, response) => cors(request, response, async () => {
@@ -192,10 +183,6 @@ export const resetGame = functions.https.onRequest((request, response) => cors(r
   }
 
   Promise.all(deletePromises).then(async () => {
-    stockData.forEach((stock: any) => {
-      db.doc(`stocks/${stock.symbol}`).set(stock);
-    });
-
     await setStocks();
 
     for(let i = 0; i < 10; i++){
