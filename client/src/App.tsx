@@ -76,7 +76,7 @@ function App() {
           }}
         >
           <header className="terminal-logo">
-            <div className="logo terminal-prompt">wall street mafia</div>
+            <div className="logo terminal-prompt">wall street trading</div>
             <blockquote>
               <small>
                 the markets can remain irrational longer than you can remain

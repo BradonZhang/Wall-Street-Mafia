@@ -9,27 +9,29 @@ import (
 	"os"
 	"io/ioutil"
 	"fmt"
-	"strings"
+	// "strings"
 	"time"
 	"math/rand"
 	"strconv"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"bytes"
   )
 
 type Order struct {
-	IsBid bool
-	Symbol string
-	Price float64
-	Amount int
-	Username string
+	IsBid bool `json:"isBid"`
+	Symbol string `json:"symbol"`
+	Price float64 `json:"price"`
+	Amount int `json:"amount"`
+	PlayerID int `json:"playerID"`
+}
+type OrderData struct {
+	Data Order `json:"data"`
 }
 
 func main() {
 
-	stocks := []string{"AMC"}
+	stocks := []string{"GOOG"}
 
 	// Use a service account
 	ctx := context.Background()
@@ -59,50 +61,83 @@ func main() {
 		}
 	}
 
-	content, err := ioutil.ReadFile("amc-01-30.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	priceArray := strings.Split(string(content), "\n")
+	// content, err := ioutil.ReadFile("amc-01-30.txt")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// priceArray := strings.Split(string(content), "\n")
 	// fmt.Printf("%q\n", priceArray)
-	for _, p := range priceArray {
-		realPrice, err := strconv.ParseFloat(p, 64)
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		fmt.Println(p)
-		for _, s := range stocks {
-			stockData, err := client.Collection("stocks").Doc(s).Get(ctx)
-			if err != nil {
-				log.Printf("couldn't fetch symbol data for " + s)
+
+	// for _, p := range priceArray {
+	// 	realPrice, err := strconv.ParseFloat(p, 64)
+	// 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// 	fmt.Println(p)
+	// 	for _, s := range stocks {
+	// 		stockData, err := client.Collection("stocks").Doc(s).Get(ctx)
+	// 		if err != nil {
+	// 			log.Printf("couldn't fetch symbol data for " + s)
+	// 		}
+	// 		currPrice := stockData.Data()["currentPrice"]
+	// 		fmt.Println("The current price for " + s + " is ")
+	// 		currPriceI, isInt := currPrice.(int)
+	// 		var currPriceF float64
+	// 		if isInt {
+	// 			currPriceF = float64(currPriceI)
+	// 		} else {
+	// 			currPriceF = currPrice.(float64)
+	// 		}
+	// 		// fmt.Println(currPriceFloat)
+	// 		// c := make(chan bool)
+	// 		for i := 0; i < 20; i++ {
+	// 			priceToTrade := (0.8 * currPriceF) + (0.2 * realPrice) + ((realPrice - currPriceF) * r.NormFloat64() / 10)
+	// 			fmt.Println(priceToTrade)
+	// 			go placeRandomOrder(ctx, client, priceToTrade, s, i % 2 == 0)
+	// 			time.Sleep(time.Second)
+	// 		}
+	// 		// for i := 0; i < 20; i++ {
+	// 		// 	_ = <-c
+	// 		// }
+	// 	}
+		for {
+			p := "1800.01"
+			realPrice, err := strconv.ParseFloat(p, 64)
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			fmt.Println(p)
+			for _, s := range stocks {
+				stockData, err := client.Collection("stocks").Doc(s).Get(ctx)
+				if err != nil {
+					log.Printf("couldn't fetch symbol data for " + s)
+				}
+				currPrice := stockData.Data()["currentPrice"]
+				fmt.Println("The current price for " + s + " is ")
+				currPriceI, isInt := currPrice.(int)
+				var currPriceF float64
+				if isInt {
+					currPriceF = float64(currPriceI)
+				} else {
+					currPriceF = currPrice.(float64)
+				}
+				// fmt.Println(currPriceFloat)
+				// c := make(chan bool)
+				for i := 0; i < 20; i++ {
+					priceToTrade := (0.8 * currPriceF) + (0.2 * realPrice) + ((realPrice - currPriceF) * r.NormFloat64() / 10)
+					fmt.Println(priceToTrade)
+					go placeRandomOrder(ctx, client, priceToTrade, s, i % 2 == 0)
+					time.Sleep(time.Second)
+				}
+				// for i := 0; i < 20; i++ {
+				// 	_ = <-c
+				// }
 			}
-			currPrice := stockData.Data()["currentPrice"]
-			fmt.Println("The current price for " + s + " is ")
-			currPriceI, isInt := currPrice.(int)
-			var currPriceF float64
-			if isInt {
-				currPriceF = float64(currPriceI)
-			} else {
-				currPriceF = currPrice.(float64)
-			}
-			// fmt.Println(currPriceFloat)
-			c := make(chan bool)
-			for i := 0; i < 50; i++ {
-				priceToTrade := (0.8 * currPriceF) + (0.2 * realPrice) + ((realPrice - currPriceF) * r.NormFloat64() / 10)
-				fmt.Println(priceToTrade)
-				go placeRandomOrder(ctx, client, priceToTrade, s, i % 2 == 0, c)
-			}
-			for i := 0; i < 50; i++ {
-				_ = <-c
-			}
-		}
 		if err != nil {
 				// Handle any errors in an appropriate way, such as returning them.
 				log.Printf("An error has occurred: %s", err)
 		}
-		time.Sleep(15*time.Second)
+		// time.Sleep(15*time.Second)
 	}
 }
 
-func placeRandomOrder(ctx context.Context, client *firestore.Client, price float64, stock string, askOrBid bool, c chan bool) {
+func placeRandomOrder(ctx context.Context, client *firestore.Client, price float64, stock string, askOrBid bool) {
 	// order := map[string]interface{}{
 	// 	"price": price,
 	// 	"amount": 10,
@@ -119,22 +154,28 @@ func placeRandomOrder(ctx context.Context, client *firestore.Client, price float
 	// 		log.Printf("Unable to place random order")
 	// 	}
 	// }
-	order := Order{askOrBid, stock, price, 10, "0"}
+	order := OrderData{Order{askOrBid, stock, price, 10, 0}}
 	b, err := json.Marshal(order)
-	body := bytes.NewBuffer(b)
-	url, err := url.Parse("https://us-central1-wall-street-mafia.cloudfunctions.net/addOrder")
-	req := &http.Request {
-		Method: "GET",
-		URL: url,
-		Header: map[string][]string {"Content-Type": { "application/json; charset=UTF-8" },},
-		Body: body,
+	if err != nil {
+		log.Fatal("Could not convert to json")
 	}
-	res, err := http.DefaultClient.Do(req)
+	body := bytes.NewReader(b)
+
+	// url, err := url.Parse("https://us-central1-wall-street-mafia.cloudfunctions.net/addOrder")
+	// req := &http.Request {
+	// 	Method: "GET",
+	// 	URL: url,
+	// 	Header: map[string][]string {"Content-Type": { "application/json; charset=UTF-8" },},
+	// 	Body: body,
+	// }
+
+	res, err := http.DefaultClient.Post("https://us-central1-wall-street-mafia.cloudfunctions.net/addOrder", "application/json", body)
 	if err != nil {
 		log.Fatal("couldn't send request")
 	}
 	data, _ := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	fmt.Printf("%d\n", res.StatusCode)
-	c <- true
+	fmt.Printf("%s\n", data)
+	// c <- true
 }
