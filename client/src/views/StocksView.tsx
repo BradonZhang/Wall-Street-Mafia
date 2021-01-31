@@ -2,13 +2,13 @@ import React, { FunctionComponent, useState, useEffect, useMemo } from 'react';
 import { db } from '../res/firebase';
 import { Holding, Player, Stock } from '../res/interfaces';
 
-interface StocksProps {
+interface StocksViewProps {
   username: string;
 }
 
 type HoldingMap = {[symbol: string]: Holding};
 
-const Stocks: FunctionComponent<StocksProps> = (props) => {
+const StocksView: FunctionComponent<StocksViewProps> = (props) => {
   const { username } = props;
   // let stockSymbols = ['GME', 'AMC', 'MSFT', 'AAPL', 'GOOGL', 'COF', 'AXP', 'HD', 'C', 'ACN'];
   const [prices, setPrices] = useState<Array<Stock>>([]);
@@ -133,4 +133,4 @@ const Stocks: FunctionComponent<StocksProps> = (props) => {
   );
 };
 
-export default Stocks;
+export default StocksView;

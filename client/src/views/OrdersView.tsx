@@ -1,10 +1,10 @@
 import React, { FunctionComponent } from 'react';
 
-interface HomeProps {
+interface OrdersViewProps {
   username: string;
 }
 
-const Home: FunctionComponent<HomeProps> = () => {
+const OrdersView: FunctionComponent<OrdersViewProps> = () => {
   let stockSymbols = ['AAPL', 'SNE', 'GME', 'MSFT', 'FB'];
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -96,4 +96,4 @@ const Home: FunctionComponent<HomeProps> = () => {
   );
 };
 
-export default Home;
+export default OrdersView;
