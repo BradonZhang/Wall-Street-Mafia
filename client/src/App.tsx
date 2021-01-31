@@ -6,36 +6,32 @@ import {
   Link,
   Route,
   Redirect,
-  useHistory,
+  // useHistory,
 } from 'react-router-dom';
 
 import Login from './views/Login';
 import Stocks from './views/Stocks';
 import Orders from './views/Orders';
 import { db } from './res/firebase';
-
-interface Price {
-  symbol: string;
-  currentPrice: number;
-}
+import { Stock } from './res/interfaces';
 
 function App() {
-  const [user, setUser] = useState('');
-  const [prices, setPrices] = useState<Array<Price>>([]);
-  const history = useHistory();
+  const [username, setUsername] = useState('');
+  const [prices, setPrices] = useState<Array<Stock>>([]);
+  // const history = useHistory();
   
   useEffect(() => {
     const unsubscribe = db.collection('stocks').onSnapshot(querySnapshot => {
-      const docs = [] as Array<Price>;
-      querySnapshot.forEach(doc => docs.push(doc.data() as Price))
+      const docs = [] as Array<Stock>;
+      querySnapshot.forEach(doc => docs.push(doc.data() as Stock))
       setPrices(docs);
-      console.log(docs);
     });
     return unsubscribe;
   }, []);
+
   return (
     <Router>
-      {user ? null : <Redirect to="/login" />}
+      {username ? null : <Redirect to="/login" />}
       <div
         className="terminal"
         style={{ display: 'flex', height: '100%', flexDirection: 'column' }}
@@ -50,12 +46,12 @@ function App() {
         >
           <header className="terminal-logo">
             <div className="logo terminal-prompt">wall street mafia</div>
-            {/* <blockquote>
+            <blockquote>
               <small>
                 the markets can remain irrational longer than you can remain
                 solvent
               </small>
-            </blockquote> */}
+            </blockquote>
           </header>
           <nav className="terminal-menu">
             <ul>
@@ -69,7 +65,7 @@ function App() {
                   <a href={'.'}>orders</a>
                 </Link>
               </li>
-              <li>{user ? user : 'not logged in'}</li>
+              <li>{username ? username : <b>not logged in</b>}</li>
             </ul>
           </nav>
         </div>
@@ -84,13 +80,13 @@ function App() {
         >
           <Switch>
             <Route path="/login">
-              <Login setUser={setUser} user={user} />
+              <Login setUsername={setUsername} username={username} />
             </Route>
             <Route path="/stocks">
-              {user ? <Stocks /> : <Redirect to="/login" />}
+              {username ? <Stocks username={username} /> : <Redirect to="/login" />}
             </Route>
             <Route path="/orders">
-              {user ? <Orders /> : <Redirect to="/login" />}
+              {username ? <Orders username={username} /> : <Redirect to="/login" />}
             </Route>
             <Route path="/:symbol"></Route>
             <Route path="/">
@@ -104,14 +100,18 @@ function App() {
             bottom: 0,
             position: 'fixed',
             width: '100%',
-            backgroundColor: '#3db818',
+            backgroundColor: '#000000',
+            color: '#3db818',
             margin: 0,
+            padding: 0,
+            borderWidth: 0,
+            borderTopWidth: 1,
           }}
         >
           <Ticker offset={'run-in'}>
             {() => prices.length ? 
               prices.map(({ symbol: s, currentPrice: p }) => (
-                <h1 key={s}>
+                <h1 key={s} style={{ color: '#7ee460' }} >
                   {s} ${p}&nbsp;&middot;&nbsp;
                 </h1>
               )) : <h1>&nbsp;</h1>

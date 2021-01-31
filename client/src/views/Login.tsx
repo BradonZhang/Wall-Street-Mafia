@@ -1,8 +1,29 @@
-// import 'terminal.css';
 import { useHistory } from 'react-router-dom';
 
-function Login(props: { setUser: (arg0: string) => void; user: string }) {
+import { functions } from '../res/firebase';
+
+function Login(props: { setUsername: (username: string) => void; username: string }) {
+  const { username, setUsername } = props;
+
   let history = useHistory();
+
+  const handleLogin = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.preventDefault();
+    const addPlayer = functions.httpsCallable('addPlayer');
+    const loginAsync = async () => {
+      try {
+        await addPlayer({ username });
+      } catch (err) {
+        console.warn(err);
+        // if (res.data) {
+        //   console.log(res.data);
+        // }
+      }
+      history.push('/stocks');
+    }
+    loginAsync();
+  };
+
   return (
     <form>
       <fieldset>
@@ -13,13 +34,13 @@ function Login(props: { setUser: (arg0: string) => void; user: string }) {
             id="username"
             minLength={1}
             type="text"
-            onChange={(e) => props.setUser(e.target.value)}
-          ></input>
+            onChange={(e) => setUsername(e.target.value)}
+          />
         </div>
         <button
-          onClick={() => (props.user ? history.push('/stocks') : null)}
+          onClick={(e) => (username ? handleLogin(e) : null)}
           className={
-            props.user ? 'btn btn-primary btn-ghost' : 'btn btn-error btn-ghost'
+            username ? 'btn btn-primary btn-ghost' : 'btn btn-error btn-ghost'
           }
         >
           log in

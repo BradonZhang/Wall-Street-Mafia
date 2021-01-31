@@ -1,6 +1,10 @@
-// import 'terminal.css';
+import React, { FunctionComponent } from 'react';
 
-function Home() {
+interface HomeProps {
+  username: string;
+}
+
+const Home: FunctionComponent<HomeProps> = () => {
   let stockSymbols = ['AAPL', 'SNE', 'GME', 'MSFT', 'FB'];
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -68,7 +72,7 @@ function Home() {
         <h2>current holdings</h2>
         {stockSymbols.map((s) => (
           <div style={{ display: 'inline' }}>
-            <a>{s}</a>,{' '}
+            <a href={'.'}>{s}</a>,{' '}
           </div>
         ))}
         <br />
@@ -90,6 +94,6 @@ function Home() {
       </div>
     </div>
   );
-}
+};
 
 export default Home;
