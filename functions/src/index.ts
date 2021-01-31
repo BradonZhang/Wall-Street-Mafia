@@ -1,16 +1,17 @@
 import * as functions from "firebase-functions";
 import * as types from "@google-cloud/firestore";
 import * as admin from "firebase-admin";
+const alpha = require('alphavantage')({ key: 'UV1MSQCUNS0STILQ' });
 const cors = require('cors')({origin: true});
 
-const log = ((something: any) => {functions.logger.info(something, {structuredData: true});});
+const log = ((name: string, something: any) => {functions.logger.info({name: name, object: something}, {structuredData: true});});
 
 admin.initializeApp();
 const db = admin.firestore()
 
 export const helloWorld = functions.https.onRequest((request, response) => cors(request, response, () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
   response.send({ data: "Hello, World!" });
 }));
@@ -21,13 +22,13 @@ interface Name{
 
 export const addPlayer = functions.https.onRequest((request, response) => cors(request, response, async () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
   const { username } = request.body.data as Name;
 
   let querySnapshot = await db.collection("players").where("username", "==", username).get();
 
-  log(`There are ${querySnapshot.size} players named ${username}`);
+  // log(`There are ${querySnapshot.size} players named ${username}`,"");
   if(querySnapshot.size > 0){
     response.status(409).send("Username already taken.");
     return;
@@ -37,7 +38,7 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
   querySnapshot = await db.collection("players").where("username", "==", "").get();
   if (querySnapshot.size > 0){
     querySnapshot.docs[0].ref.update("username", username).then(() => {
-      log(`user ${querySnapshot.docs[0].ref.path} got the username ${username}`);
+      // log(`user ${querySnapshot.docs[0].ref.path} got the username ${username}`, "");
       response.send({data:"Successfully created user", id: querySnapshot.docs[0].id});
     });
   }
@@ -46,12 +47,13 @@ export const addPlayer = functions.https.onRequest((request, response) => cors(r
   }
 }));
 
-const getPlayer = async (username: string) => {
-  return (await db.collection("players").where("username", "==", username).get());
+const getPlayerByID = async (playerID: number) => {
+  return (await db.collection("players").where("id", "==", playerID).limit(1).get()).docs[0];
 };
 
 const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReference) => {
   const oldAskData = (await ask.get()).data()!;
+  // log("oldAskData", oldAskData);
   const oldBidData = (await bid.get()).data()!;
   const sharesExchanged = Math.min(oldAskData.amount, oldBidData.amount);
 
@@ -62,18 +64,25 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   // update stock price
   // update average cost for bidder
 
-  const asker: types.DocumentData = getPlayer(oldAskData.username);
-  const bider: types.DocumentData = getPlayer(oldBidData.username);
+  const asker: types.DocumentData = await getPlayerByID(oldAskData.playerID);
+  const askerData = asker.data()!;
+  const bider: types.DocumentData = await getPlayerByID(oldBidData.playerID);
+  const biderData = bider.data()!;
+
+  // log("asker", askerData);
+  // log("bider", biderData);
 
   const costPer = (oldAskData.price + oldBidData.price)/2;
   const cost = sharesExchanged * costPer;
-
-  if (bider.buyingPower < cost) {
+  // log("cost", cost);
+  if (biderData.buyingPower < cost) {
     return;
   }
 
-  bider.ref.update("buyingPower", bider.buyingPower - cost);
-  asker.ref.update("buyingPower", asker.buyingPower + cost);
+  // log("bidder buying power", biderData);
+
+  bider.ref.update("buyingPower", biderData.buyingPower - cost);
+  asker.ref.update("buyingPower", askerData.buyingPower + cost);
 
   const biderHolding = bider.ref.collection("holdings").doc(oldAskData.symbol);
   const biderHoldingData = (await biderHolding.get()).data();
@@ -85,16 +94,16 @@ const makeDeal = async (ask: types.DocumentReference, bid: types.DocumentReferen
   askerHolding.update("shares", askerHoldingData.shares - sharesExchanged);
 
   ask.update("amount", oldAskData.amount - sharesExchanged);
-  bid.update("amount", oldBidData.amount + sharesExchanged);
+  bid.update("amount", oldBidData.amount - sharesExchanged);
 
   const newAskData = (await ask.get()).data()!;
   const newBidData = (await bid.get()).data()!;
 
   if (newAskData.amount === 0) {
-    ask.delete();
+    await ask.delete();
   }
   if (newBidData.amount === 0) {
-    bid.delete();
+    await bid.delete();
   }
 
   db.doc(`stocks/${oldAskData.symbol}`).update("currentPrice", costPer);
@@ -110,12 +119,12 @@ const findMatches = async (symbol: string, newOrder: types.DocumentReference, is
     querySnapshot.docs.filter((doc) => {
       if(isBid){ return doc.data().price <= orderData.price; }
       else{ return doc.data().price >= orderData.price; }
-    }).forEach((match) => {
+    }).forEach(async (match) => {
       if (sharesDealt > orderData.amount) {return;}
       sharesDealt += match.data().amount;
       const ask = isBid ? match.ref : newOrder;
       const bid = isBid ? newOrder : match.ref;
-      makeDeal(ask, bid);
+      await makeDeal(ask, bid);
     })
   });
 };
@@ -125,17 +134,37 @@ interface Order{
   symbol: string;
   price: number;
   amount: number;
-  username: string;
+  playerID: number;
 }
 
-export const addOrder = functions.https.onRequest((request, response) => cors(request, response, () => {
+export const addOrder = functions.https.onRequest((request, response) => cors(request, response, async () => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(request.body, {structuredData: true});
+  log("body", request.body);
 
-  const { isBid, symbol, price, amount, username } = request.body.data as Order;
+  const { isBid, symbol, price, amount, playerID } = request.body.data as Order;
+
+  // Order validation
+  let valid = true;
+  if(price < 0 || amount < 0){
+    valid = false;
+  }
+  if((await db.collection("stocks").where("symbol", "==", symbol).get()).size === 0){
+    valid = false;
+  }
+  else{
+    if(!isBid){
+      if(amount > (await db.doc(`players/${playerID}/holdings/${symbol}`).get()).data()!["shares"]){
+        valid = false;
+      }
+    }
+  }
+
+  if (!valid){
+    response.status(400).send({data: "Invalid order request."})
+  }
 
   db.collection(`stocks/${symbol}/${isBid ? "bids" : "asks"}`)
-      .add({price, amount, time: types.Timestamp.now(), username})
+      .add({price, amount, time: types.Timestamp.now(), playerID, symbol})
       .then(async (documentReference: types.DocumentReference) => {
         await findMatches(symbol, documentReference, isBid);
         response.status(200).send({
@@ -144,22 +173,25 @@ export const addOrder = functions.https.onRequest((request, response) => cors(re
       });
 }));
 
-const stockData = [
-  {
-      "currentPrice": 13.55,
-      "symbol": "AMC"
-  },
-  {
-      "currentPrice": 312.01,
-      "symbol": "GME"
-  },
-  {
-      "currentPrice": 123.45,
-      "symbol": "MSFT"
+
+const setStocks = async () => {
+  const stocks = [ //list of all the stocks we're using
+    "AXP", "COF", "C", "GOOG", "ACN"
+  ];
+  for(let symbol of stocks){
+    const stockData = await alpha.data.intraday(symbol);
+    const initialPrice = stockData["Time Series (1min)"][stockData["Meta Data"]["3. Last Refreshed"]]["4. close"];
+    db.doc(`stocks/${symbol}`).set({
+      currentPrice: Number(initialPrice),
+      symbol: symbol
+    });
   }
-];
+};
 
 export const resetGame = functions.https.onRequest((request, response) => cors(request, response, async () => {
+  response.set('Access-Control-Allow-Origin', '*');
+  log("body", request.body);
+
   let deletePromises: Array<Promise<any>> = [];
 
   for (const doc of (await db.collection("players").get()).docs){
@@ -169,19 +201,19 @@ export const resetGame = functions.https.onRequest((request, response) => cors(r
   for (const doc of (await db.collection("stocks").get()).docs){
     deletePromises.push(doc.ref.delete());
   }
-  
-  Promise.all(deletePromises).then(() => {
-    stockData.forEach((stock: any) => {
-      db.doc(`stocks/${stock.symbol}`).set(stock);
-    });
+
+  Promise.all(deletePromises).then(async () => {
+    await setStocks();
 
     for(let i = 0; i < 10; i++){
-      db.doc(`players/${i}`).set({
+      const newPlayer = db.doc(`players/${i}`);
+      newPlayer.set({
         buyingPower: 1000000,
         totalEquity: 1000000,
         username: "",
         id: i
       });
+      newPlayer.collection("holdings");
     }
 
     response.status(200).send({
